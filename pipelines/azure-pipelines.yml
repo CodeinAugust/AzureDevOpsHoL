@@ -1,0 +1,37 @@
+trigger:
+- main
+
+pool:
+  name: 'PrivateAgent001'
+
+steps:
+- checkout: self
+
+- task: NodeTool@0
+  inputs:
+    versionSpec: '20.x'
+  displayName: 'Install Node.js'
+
+- script: |
+    cd source
+    npm install
+    npm test
+  displayName: 'Install dependencies and run tests'
+
+- task: PublishBuildArtifacts@1
+  inputs:
+    PathtoPublish: '$(Build.SourcesDirectory)/source' 
+    ArtifactName: 'drop'
+    publishLocation: 'Container'
+  displayName: 'Publish build artifacts'
+  condition: succeededOrFailed()
+
+- task: Docker@2
+  inputs:
+    containerRegistry: 'ACR'
+    repository: 'nodejs-aks-sample'
+    command: 'buildAndPush'
+    Dockerfile: '$(Build.SourcesDirectory)/source/Dockerfile'
+    tags: |
+      $(Build.BuildId)
+  displayName: 'Build and push Docker image'
